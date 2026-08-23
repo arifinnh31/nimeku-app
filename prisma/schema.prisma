@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Anime {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  title          String
+  titleJapanese  String?
+  synopsis       String   @db.Text
+  coverImage     String
+  bannerImage    String?
+  rating         Float    @default(0)
+  type           String // TV, Movie, OVA, ONA, Special
+  status         String // Ongoing, Completed
+  studio         String
+  season         String
+  year           Int
+  genres         String[]
+  totalEpisodes  Int?
+  currentEpisode Int      @default(0)
+  airedDay       String?
+  airedTime      String?
+  malId          Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  episodes Episode[]
+}
+
+model Episode {
+  id         String   @id @default(cuid())
+  animeId    String
+  anime      Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  number     Int
+  title      String
+  releasedAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  servers       StreamServer[]
+  downloadLinks DownloadLink[]
+
+  @@unique([animeId, number])
+}
+
+model StreamServer {
+  id        String   @id @default(cuid())
+  episodeId String
+  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  name      String
+  type      String // embed, direct
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DownloadLink {
+  id         String   @id @default(cuid())
+  episodeId  String
+  episode    Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  resolution String // 360p, 480p, 720p, 1080p
+  provider   String
+  url        String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
