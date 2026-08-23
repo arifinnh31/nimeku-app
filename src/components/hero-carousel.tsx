@@ -53,9 +53,11 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
             alt={item.title}
             fill
             priority={i === 0}
+            loading={i === 0 ? "eager" : undefined}
             sizes="100vw"
             className="object-cover"
           />
+
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
         </div>

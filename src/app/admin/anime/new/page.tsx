@@ -16,11 +16,16 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Search, X, Loader2, Save } from "lucide-react";
 import { ALL_GENRES, SEASONS, SCHEDULE_DAYS } from "@/lib/constants";
-import { getJikanAnime } from "@/actions/jikan";
+import { getAniListAnime } from "@/actions/anilist";
+
+
 import { createAnime } from "@/actions/anime";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function AddAnimePage() {
-  const [malId, setMalId] = useState("");
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
   const [fetching, setFetching] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,7 +46,7 @@ export default function AddAnimePage() {
     airedDay: "",
     airedTime: "23:00",
     totalEpisodes: "",
-    malId: "",
+    anilistId: "",
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -59,47 +64,99 @@ export default function AddAnimePage() {
     );
   };
 
-  const handleFetchJikan = async () => {
-    if (!malId) return;
-    setFetching(true);
-    
-    const result = await getJikanAnime(malId);
-    
-    if (result.success && result.data) {
-      const { data } = result;
-      setFormValues({
-        title: data.title || "",
-        slug: data.slug || "",
-        synopsis: data.synopsis || "",
-        type: data.type || "TV",
-        status: data.status || "Ongoing",
-        studio: data.studio || "",
-        season: data.season || "",
-        year: data.year.toString(),
-        rating: data.rating.toString(),
-        coverImage: data.coverImage || "",
-        bannerImage: data.bannerImage || "",
-        airedDay: "",
-        airedTime: "23:00",
-        totalEpisodes: data.totalEpisodes?.toString() || "",
-        malId: data.malId?.toString() || malId,
-      });
-      setSelectedGenres(data.genres || []);
-    } else {
-      alert("Gagal mengambil data: " + result.error);
+  const handleFetchAniList = async () => {
+    if (!searchQuery.trim()) {
+      toast.error("Masukkan Judul Anime, ID, atau URL terlebih dahulu.");
+      return;
     }
+    setFetching(true);
+    const toastId = toast.loading("Mengambil detail anime dari AniList API...");
     
-    setFetching(false);
+    try {
+      const result = await getAniListAnime(searchQuery);
+      
+      if (result.success && result.data) {
+        const { data } = result;
+        setFormValues({
+          title: data.title || "",
+          slug: data.slug || "",
+          synopsis: data.synopsis || "",
+          type: data.type || "TV",
+          status: data.status || "Ongoing",
+          studio: data.studio || "",
+          season: data.season || "",
+          year: data.year.toString(),
+          rating: data.rating.toString(),
+          coverImage: data.coverImage || "",
+          bannerImage: data.bannerImage || "",
+          airedDay: data.airedDay || "",
+          airedTime: data.airedTime || "23:00",
+          totalEpisodes: data.totalEpisodes?.toString() || "",
+          anilistId: data.anilistId?.toString() || searchQuery,
+        });
+
+        setSelectedGenres(data.genres || []);
+        toast.success("Data anime berhasil ditarik dari AniList!", { id: toastId });
+      } else {
+        toast.error("Gagal mengambil data: " + result.error, { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error("Terjadi kesalahan: " + err.message, { id: toastId });
+    } finally {
+      setFetching(false);
+    }
   };
+
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!formValues.title.trim()) {
+      toast.error("Judul anime wajib diisi.");
+      return;
+    }
+    if (!formValues.coverImage.trim()) {
+      toast.error("Cover image URL wajib diisi.");
+      return;
+    }
+
     setLoading(true);
-    const formData = new FormData(e.currentTarget);
-    formData.set("genres", selectedGenres.join(","));
-    await createAnime(formData);
-    setLoading(false);
+    const toastId = toast.loading("Menambahkan anime baru...");
+    try {
+      const formData = new FormData(e.currentTarget);
+      formData.set("title", formValues.title.trim());
+      formData.set("slug", formValues.slug.trim());
+      formData.set("synopsis", formValues.synopsis.trim());
+      formData.set("type", formValues.type || "TV");
+      formData.set("status", formValues.status || "Ongoing");
+      formData.set("studio", formValues.studio.trim() || "Unknown");
+      formData.set("season", formValues.season || "Unknown");
+      formData.set("year", formValues.year || new Date().getFullYear().toString());
+      formData.set("rating", formValues.rating || "0");
+      formData.set("coverImage", formValues.coverImage.trim());
+      formData.set("bannerImage", formValues.bannerImage.trim());
+      formData.set("airedDay", formValues.airedDay);
+      formData.set("airedTime", formValues.airedTime);
+      formData.set("totalEpisodes", formValues.totalEpisodes);
+      formData.set("anilistId", formValues.anilistId);
+      formData.set("genres", selectedGenres.join(","));
+
+      const res = await createAnime(formData);
+
+      if (res.success) {
+        toast.success("Anime baru berhasil ditambahkan!", { id: toastId });
+        router.push("/admin/anime");
+        router.refresh();
+      } else {
+        toast.error("Gagal menambahkan anime: " + res.error, { id: toastId });
+        setLoading(false);
+      }
+    } catch (err: any) {
+      toast.error("Gagal menambahkan anime: " + (err?.message || "Terjadi kesalahan"), { id: toastId });
+      setLoading(false);
+    }
   };
+
+
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -115,30 +172,30 @@ export default function AddAnimePage() {
             Tambah Anime Baru
           </h1>
           <p className="text-sm text-muted-foreground">
-            Isi manual atau import dari MyAnimeList
+            Isi manual atau import dari AniList
           </p>
         </div>
       </div>
 
-      {/* Import MAL */}
+      {/* Import AniList */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Search className="w-4 h-4 text-primary" />
-            Import dari MyAnimeList (Jikan API)
+            Import Otomatis via AniList API
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3">
             <Input
-              placeholder="Masukkan MAL ID (contoh: 21)"
-              value={malId}
-              onChange={(e) => setMalId(e.target.value)}
+              placeholder="Masukkan Judul Anime, ID, atau URL (contoh: Solo Leveling atau 21)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-background"
             />
             <Button
-              onClick={handleFetchJikan}
-              disabled={!malId || fetching}
+              onClick={handleFetchAniList}
+              disabled={!searchQuery || fetching}
               className="shrink-0 gap-2"
             >
               {fetching ? (
@@ -149,17 +206,18 @@ export default function AddAnimePage() {
               ) : (
                 <>
                   <Search className="w-4 h-4" />
-                  Fetch
+                  Fetch Data
                 </>
               )}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Sistem akan mengisi otomatis judul, sinopsis, genre, dan cover dari
-            Jikan API
+            Cari langsung berdasarkan Judul Anime, ID AniList, ataupun Link URL anime.
           </p>
         </CardContent>
       </Card>
+
+
 
       <div className="flex items-center gap-3">
         <Separator className="flex-1" />
@@ -171,7 +229,8 @@ export default function AddAnimePage() {
       <form onSubmit={handleSubmit}>
         <Card>
           <CardContent className="p-6 space-y-5">
-            <input type="hidden" name="malId" value={formValues.malId} />
+            <input type="hidden" name="anilistId" value={formValues.anilistId} />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">Judul</label>
@@ -358,7 +417,7 @@ export default function AddAnimePage() {
                 </label>
                 <Input
                    name="coverImage"
-                   placeholder="https://cdn.myanimelist.net/images/anime/..."
+                   placeholder="https://s4.anilist.co/file/anilistcdn/media/anime/cover/..."
                    value={formValues.coverImage}
                    onChange={handleInputChange}
                    required

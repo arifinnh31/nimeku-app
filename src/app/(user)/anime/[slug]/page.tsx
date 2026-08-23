@@ -11,11 +11,13 @@ import {
   Calendar,
   Tv,
   Building2,
-  Download,
-  ExternalLink,
 } from "lucide-react";
-import { getAnimeBySlug, getAnimeList } from "@/actions/anime";
+
+import { getAnimeBySlug, getAnimeList, recordPageView } from "@/actions/anime";
+import { AnimeDetailActions } from "@/components/anime-detail-actions";
 import { Metadata } from "next";
+import { formatSeasonYear } from "@/lib/constants";
+
 
 // Generate all possible slugs at build time
 export async function generateStaticParams() {
@@ -67,7 +69,11 @@ export default async function AnimeDetailPage({
   const anime = await getAnimeBySlug(slug);
   if (!anime) return notFound();
 
+  // Track page view in database
+  recordPageView(`/anime/${slug}`, anime.id);
+
   const episodes = anime.episodes || [];
+
 
   return (
     <div className="min-h-screen">
@@ -133,30 +139,32 @@ export default async function AnimeDetailPage({
             </div>
 
             {/* Metadata */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Building2 className="w-4 h-4 text-primary" />
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground mt-4">
+              <div className="flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-primary shrink-0" />
                 <span>{anime.studio}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="w-4 h-4 text-primary" />
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-primary shrink-0" />
                 <span>
-                  {anime.season} {anime.year}
+                  {formatSeasonYear(anime.season, anime.year)}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Tv className="w-4 h-4 text-primary" />
+
+              <div className="flex items-center gap-1.5">
+                <Tv className="w-4 h-4 text-primary shrink-0" />
                 <span>{anime.type}</span>
               </div>
               {anime.airedDay && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Play className="w-4 h-4 text-primary" />
+                <div className="flex items-center gap-1.5">
+                  <Play className="w-4 h-4 text-primary shrink-0" />
                   <span>
                     {anime.airedDay} {anime.airedTime}
                   </span>
                 </div>
               )}
             </div>
+
 
             {/* Genres */}
             <div className="flex flex-wrap gap-2 mt-4">
@@ -167,17 +175,30 @@ export default async function AnimeDetailPage({
               ))}
             </div>
 
-            {/* CTA */}
-            <div className="flex gap-3 mt-5">
-              <Button asChild size="lg" className="gap-2">
-                <Link href={`/anime/${anime.slug}/watch/1`}>
+            {/* CTA & Actions */}
+            <div className="flex flex-wrap items-center gap-3 mt-5">
+              <Button asChild size="lg" className="gap-2 shadow-lg shadow-primary/20">
+                <Link href={`/anime/${anime.slug}/watch/${episodes[episodes.length - 1]?.number || 1}`}>
                   <Play className="w-4 h-4 fill-current" />
-                  Tonton Episode 1
+                  Tonton Episode {episodes[episodes.length - 1]?.number || 1}
                 </Link>
               </Button>
+              <AnimeDetailActions
+                anime={{
+                  slug: anime.slug,
+                  title: anime.title,
+                  coverImage: anime.coverImage,
+                  rating: anime.rating,
+                  type: anime.type,
+                  status: anime.status,
+                  totalEpisodes: anime.totalEpisodes,
+                  currentEpisode: anime.currentEpisode,
+                }}
+              />
             </div>
           </div>
         </div>
+
 
         {/* Synopsis */}
         <div className="mt-8">
@@ -200,11 +221,9 @@ export default async function AnimeDetailPage({
         </div>
 
         <Separator className="my-8" />
-
-        {/* Batch Download */}
+        {/* Batch Download (Disimpan untuk implementasi mendatang)
         <div className="mb-10">
           <h2 className="font-[var(--font-heading)] text-lg font-semibold mb-4 flex items-center gap-2">
-            <Download className="w-5 h-5 text-primary" />
             Download Batch
           </h2>
           <div className="overflow-x-auto">
@@ -235,7 +254,6 @@ export default async function AnimeDetailPage({
                           href="#"
                           className="inline-flex items-center gap-1 text-primary hover:underline"
                         >
-                          <ExternalLink className="w-3 h-3" />
                           {prov}
                         </a>
                       </td>
@@ -246,7 +264,9 @@ export default async function AnimeDetailPage({
             </table>
           </div>
         </div>
+        */}
       </div>
     </div>
+
   );
 }

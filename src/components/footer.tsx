@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Play } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Logo } from "@/components/ui/logo";
+
 
 export function Footer() {
   return (
@@ -9,19 +10,15 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
           <div>
-            <Link href="/" className="flex items-center gap-2 mb-3">
-              <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary">
-                <Play className="w-3.5 h-3.5 text-primary-foreground fill-primary-foreground" />
-              </div>
-              <span className="font-bold text-lg">
-                Nime<span className="text-primary">Ku</span>
-              </span>
-            </Link>
+            <div className="mb-3">
+              <Logo href="/" />
+            </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Platform streaming anime subtitle Indonesia terlengkap. Nonton
               anime favoritmu dengan kualitas terbaik.
             </p>
           </div>
+
 
           {/* Quick Links */}
           <div>

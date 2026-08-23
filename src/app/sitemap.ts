@@ -35,7 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
       ...animeEntries,
     ]
-  } catch (error) {
+  } catch {
     // Fallback if database is not accessible during build
     return [
       {

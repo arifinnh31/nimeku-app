@@ -19,7 +19,8 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -40,9 +41,10 @@ export async function updateSession(request: NextRequest) {
 
   const isPublicRoute = request.nextUrl.pathname.startsWith('/login');
   const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
-  const isStaticResource = request.nextUrl.pathname.startsWith('/_next') || request.nextUrl.pathname.includes('.')
+  const isStaticResource = request.nextUrl.pathname.startsWith('/_next') || request.nextUrl.pathname.includes('.');
+  const isServerAction = request.headers.has('next-action') || request.headers.has('rsc');
 
-  if (!isStaticResource) {
+  if (!isStaticResource && !isServerAction) {
     if (!user && isAdminRoute) {
       // no user, guest tries to access admin -> redirect to login
       const url = request.nextUrl.clone()
@@ -57,6 +59,7 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
   }
+
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:

@@ -5,18 +5,21 @@ import { SearchFilters, FilterState } from "@/components/search-filters";
 import { AnimeGrid } from "@/components/anime-grid";
 import { Button } from "@/components/ui/button";
 import { getAnimeList } from "@/actions/anime";
-import { Anime } from "@prisma/client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { Anime } from "@prisma/client";
+import CatalogLoading from "./loading";
+
 
 const ITEMS_PER_PAGE = 12;
 
 export default function CatalogPage() {
   return (
-    <Suspense fallback={<div className="container mx-auto px-4 py-12 text-center text-muted-foreground animate-pulse">Memuat Katalog...</div>}>
+    <Suspense fallback={<CatalogLoading />}>
       <CatalogContent />
     </Suspense>
   );
 }
+
 
 function CatalogContent() {
   const [page, setPage] = useState(1);
@@ -31,6 +34,11 @@ function CatalogContent() {
     });
   }, []);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
+
   const filteredAnime = useMemo(() => {
     let result = [...animeList];
     
@@ -42,13 +50,25 @@ function CatalogContent() {
         result = result.filter(a => filters.genres.every(g => a.genres.includes(g)));
       }
       if (filters.season !== "all") {
-        result = result.filter(a => `${a.season} ${a.year}` === filters.season);
+        result = result.filter(a => a.season?.toLowerCase().startsWith(filters.season.toLowerCase()));
       }
+
       if (filters.type !== "all") {
         result = result.filter(a => a.type === filters.type);
       }
       if (filters.status !== "all") {
         result = result.filter(a => a.status === filters.status);
+      }
+      if (filters.sort) {
+        if (filters.sort === "rating" || filters.sort === "trending") {
+          result.sort((a, b) => b.rating - a.rating);
+        } else if (filters.sort === "title") {
+          result.sort((a, b) => a.title.localeCompare(b.title));
+        } else if (filters.sort === "oldest") {
+          result.sort((a, b) => (a.year - b.year) || (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+        } else if (filters.sort === "latest") {
+          result.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        }
       }
     }
     
@@ -85,10 +105,19 @@ function CatalogContent() {
 
       {/* Grid */}
       {isLoading ? (
-        <div className="py-20 text-center">Loading anime...</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+            <div key={i} className="space-y-2.5">
+              <div className="w-full aspect-[3/4] rounded-xl bg-muted/60 animate-pulse" />
+              <div className="w-4/5 h-4 rounded bg-muted/60 animate-pulse" />
+              <div className="w-1/2 h-3 rounded bg-muted/60 animate-pulse" />
+            </div>
+          ))}
+        </div>
       ) : (
         <AnimeGrid items={paginatedAnime} />
       )}
+
 
       {/* Pagination */}
       <div className="flex items-center justify-center gap-2 pt-4">

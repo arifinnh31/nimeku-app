@@ -13,17 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, X, SlidersHorizontal } from "lucide-react";
-const ALL_GENRES = [
-  "Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", 
-  "Historical", "Horror", "Isekai", "Martial Arts", "Mecha", 
-  "Military", "Music", "Mystery", "Psychological", "Romance", 
-  "School", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller"
-];
+import { ALL_GENRES, SEASONS } from "@/lib/constants";
 
-const SEASONS = [
-  "Winter 2026", "Spring 2026", "Fall 2025", "Summer 2025",
-  "Winter 2025", "Fall 2024", "Summer 2024", "Spring 2024"
-];
 
 interface SearchFiltersProps {
   onChange?: (filters: FilterState) => void;

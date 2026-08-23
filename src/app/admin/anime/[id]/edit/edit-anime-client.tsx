@@ -17,15 +17,22 @@ import {
 import { ArrowLeft, X, Loader2, Save, Search } from "lucide-react";
 import { ALL_GENRES, SEASONS, SCHEDULE_DAYS } from "@/lib/constants";
 import { updateAnime } from "@/actions/anime";
-import { getJikanAnime, syncEpisodesFromMal } from "@/actions/jikan";
+import { getAniListAnime, syncEpisodesFromAniList } from "@/actions/anilist";
+
 import { Anime } from "@prisma/client";
+
+
 import { ListMusic } from "lucide-react";
 
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+
 export function EditAnimeClient({ anime }: { anime: Anime }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [syncingEpisodes, setSyncingEpisodes] = useState(false);
-  const [malId, setMalId] = useState(anime.malId?.toString() || "");
+  const [anilistId, setAnilistId] = useState(anime.anilistId?.toString() || "");
   const [selectedGenres, setSelectedGenres] = useState<string[]>(anime.genres);
 
   const [formValues, setFormValues] = useState({
@@ -43,7 +50,7 @@ export function EditAnimeClient({ anime }: { anime: Anime }) {
     bannerImage: anime.bannerImage || "",
     airedDay: anime.airedDay || "",
     airedTime: anime.airedTime || "23:00",
-    malId: anime.malId?.toString() || "",
+    anilistId: anime.anilistId?.toString() || "",
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -61,65 +68,126 @@ export function EditAnimeClient({ anime }: { anime: Anime }) {
     );
   };
 
-  const handleFetchJikan = async () => {
-    if (!malId) return;
-    setFetching(true);
-    
-    const result = await getJikanAnime(malId);
-    
-    if (result.success && result.data) {
-      const { data } = result;
-      setFormValues({
-        title: data.title || "",
-        slug: data.slug || "",
-        synopsis: data.synopsis || "",
-        type: data.type || "TV",
-        status: data.status || "Ongoing",
-        studio: data.studio || "",
-        season: data.season || "",
-        year: data.year.toString(),
-        rating: data.rating.toString(),
-        coverImage: data.coverImage || "",
-        bannerImage: data.bannerImage || "",
-        airedDay: formValues.airedDay,
-        airedTime: formValues.airedTime,
-        totalEpisodes: data.totalEpisodes?.toString() || "",
-        malId: data.malId?.toString() || malId,
-      });
-      setSelectedGenres(data.genres || []);
-    } else {
-      alert("Gagal mengambil data: " + result.error);
+  const handleFetchAniList = async () => {
+    if (!anilistId.trim()) {
+      toast.error("Masukkan Judul Anime, ID, atau URL terlebih dahulu.");
+      return;
     }
+    setFetching(true);
+    const toastId = toast.loading("Mengambil detail anime dari AniList API...");
     
-    setFetching(false);
+    try {
+      const result = await getAniListAnime(anilistId);
+      if (result.success && result.data) {
+        const { data } = result;
+        setFormValues({
+          title: data.title || "",
+          slug: data.slug || "",
+          synopsis: data.synopsis || "",
+          type: data.type || "TV",
+          status: data.status || "Ongoing",
+          studio: data.studio || "",
+          season: data.season || "",
+          year: data.year.toString(),
+          rating: data.rating.toString(),
+          coverImage: data.coverImage || "",
+          bannerImage: data.bannerImage || "",
+          airedDay: data.airedDay || formValues.airedDay,
+          airedTime: data.airedTime || formValues.airedTime,
+          totalEpisodes: data.totalEpisodes?.toString() || "",
+          anilistId: data.anilistId?.toString() || anilistId,
+        });
+
+        setSelectedGenres(data.genres || []);
+        toast.success("Data anime berhasil diperbarui dari AniList!", { id: toastId });
+      } else {
+        toast.error("Gagal mengambil data: " + result.error, { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error("Terjadi kesalahan: " + err.message, { id: toastId });
+    } finally {
+      setFetching(false);
+    }
   };
 
+
   const handleSyncEpisodes = async () => {
-    const idToSync = malId || anime.malId?.toString();
-    if (!idToSync) {
-      alert("Masukkan MAL ID terlebih dahulu!");
-      return;
+    const rawId = (anilistId || anime.anilistId?.toString() || "").trim();
+    let numId = 0;
+    const match = rawId.match(/anime\/(\d+)/i);
+    if (match) {
+      numId = parseInt(match[1], 10);
+    } else if (/^\d+$/.test(rawId)) {
+      numId = parseInt(rawId, 10);
     }
 
     setSyncingEpisodes(true);
-    const result = await syncEpisodesFromMal(anime.id, parseInt(idToSync));
-    
-    if (result.success) {
-      alert(`Berhasil sinkronisasi ${result.count} episode!`);
-    } else {
-      alert("Gagal sinkronisasi episode: " + result.error);
+    const toastId = toast.loading("Sedang menyinkronkan daftar episode dari AniList...");
+    try {
+      const result = await syncEpisodesFromAniList(anime.id, numId);
+      if (result.success) {
+        toast.success(`Berhasil sinkronisasi ${result.count} episode!`, { id: toastId });
+        router.refresh();
+      } else {
+        toast.error("Gagal sinkronisasi episode: " + result.error, { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error("Terjadi kesalahan sinkronisasi: " + err.message, { id: toastId });
+    } finally {
+      setSyncingEpisodes(false);
     }
-    setSyncingEpisodes(false);
   };
+
+
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!formValues.title.trim()) {
+      toast.error("Judul anime wajib diisi.");
+      return;
+    }
+    if (!formValues.coverImage.trim()) {
+      toast.error("Cover image URL wajib diisi.");
+      return;
+    }
+
     setLoading(true);
-    const formData = new FormData(e.currentTarget);
-    formData.set("genres", selectedGenres.join(","));
-    await updateAnime(anime.id, formData);
-    setLoading(false);
+    const toastId = toast.loading("Menyimpan perubahan anime...");
+    try {
+      const formData = new FormData(e.currentTarget);
+      formData.set("title", formValues.title.trim());
+      formData.set("slug", formValues.slug.trim());
+      formData.set("synopsis", formValues.synopsis.trim());
+      formData.set("type", formValues.type || "TV");
+      formData.set("status", formValues.status || "Ongoing");
+      formData.set("studio", formValues.studio.trim() || "Unknown");
+      formData.set("season", formValues.season || "Unknown");
+      formData.set("year", formValues.year || new Date().getFullYear().toString());
+      formData.set("rating", formValues.rating || "0");
+      formData.set("coverImage", formValues.coverImage.trim());
+      formData.set("bannerImage", formValues.bannerImage.trim());
+      formData.set("airedDay", formValues.airedDay);
+      formData.set("airedTime", formValues.airedTime);
+      formData.set("totalEpisodes", formValues.totalEpisodes);
+      formData.set("anilistId", formValues.anilistId);
+      formData.set("genres", selectedGenres.join(","));
+
+      const res = await updateAnime(anime.id, formData);
+      if (res.success) {
+        toast.success("Perubahan anime berhasil disimpan!", { id: toastId });
+        router.push("/admin/anime");
+        router.refresh();
+      } else {
+        toast.error("Gagal menyimpan perubahan: " + res.error, { id: toastId });
+        setLoading(false);
+      }
+    } catch (err: any) {
+      toast.error("Gagal menyimpan perubahan: " + (err?.message || "Terjadi kesalahan"), { id: toastId });
+      setLoading(false);
+    }
   };
+
+
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -140,26 +208,27 @@ export function EditAnimeClient({ anime }: { anime: Anime }) {
         </div>
       </div>
 
-      {/* Import MAL */}
+      {/* Import AniList */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Search className="w-4 h-4 text-primary" />
-            Update dari MyAnimeList (Jikan API)
+            Update Otomatis via AniList API
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3">
             <Input
-              placeholder="Masukkan MAL ID (contoh: 21)"
-              value={malId}
-              onChange={(e) => setMalId(e.target.value)}
+              placeholder="Masukkan Judul Anime, ID, atau URL"
+              value={anilistId}
+              onChange={(e) => setAnilistId(e.target.value)}
               className="bg-background"
             />
+
             <Button
               type="button"
-              onClick={handleFetchJikan}
-              disabled={!malId || fetching}
+              onClick={handleFetchAniList}
+              disabled={!anilistId || fetching}
               className="shrink-0 gap-2"
             >
               {fetching ? (
@@ -170,15 +239,16 @@ export function EditAnimeClient({ anime }: { anime: Anime }) {
               ) : (
                 <>
                   <Search className="w-4 h-4" />
-                  Fetch & Sync
+                  Fetch AniList
                 </>
               )}
             </Button>
+
             <Button
               type="button"
               variant="secondary"
               onClick={handleSyncEpisodes}
-              disabled={syncingEpisodes || (!malId && !anime.malId)}
+              disabled={syncingEpisodes || (!anilistId && !anime.anilistId)}
               className="shrink-0 gap-2"
             >
               {syncingEpisodes ? (
@@ -195,7 +265,7 @@ export function EditAnimeClient({ anime }: { anime: Anime }) {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Gunakan MAL ID untuk memperbarui judul, sinopsis, genre, dan cover, atau tarik daftar episode secara otomatis.
+            Gunakan Judul Anime atau ID AniList untuk memperbarui data anime atau menarik daftar episode secara otomatis.
           </p>
         </CardContent>
       </Card>
@@ -203,12 +273,13 @@ export function EditAnimeClient({ anime }: { anime: Anime }) {
       <form onSubmit={handleSubmit}>
         <Card>
           <CardContent className="p-6 space-y-5">
-            <input type="hidden" name="malId" value={formValues.malId} />
+            <input type="hidden" name="anilistId" value={formValues.anilistId} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">Judul</label>
                 <Input
                   name="title"
+
                   placeholder="One Piece"
                   value={formValues.title}
                   onChange={handleInputChange}
@@ -387,7 +458,7 @@ export function EditAnimeClient({ anime }: { anime: Anime }) {
                 </label>
                 <Input
                    name="coverImage"
-                   placeholder="https://cdn.myanimelist.net/images/anime/..."
+                   placeholder="https://s4.anilist.co/file/anilistcdn/media/anime/cover/..."
                    value={formValues.coverImage}
                    onChange={handleInputChange}
                    required

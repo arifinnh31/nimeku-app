@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Plus, Trash2, Monitor, Download, Save, Loader2 } from "lucide-react";
 import { updateEpisode } from "@/actions/episode";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface ServerEntry {
   id: string;
@@ -31,7 +33,9 @@ interface DownloadEntry {
 }
 
 export function EditEpisodeClient({ episode }: { episode: any }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+
   const [servers, setServers] = useState<ServerEntry[]>(
     episode.servers.map((s: any) => ({
       id: s.id,
@@ -84,12 +88,22 @@ export function EditEpisodeClient({ episode }: { episode: any }) {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    const formData = new FormData(e.currentTarget);
-    formData.set("servers", JSON.stringify(servers));
-    formData.set("downloadLinks", JSON.stringify(downloads));
-    await updateEpisode(episode.id, formData);
-    setLoading(false);
+    const toastId = toast.loading("Menyimpan perubahan episode...");
+    try {
+      const formData = new FormData(e.currentTarget);
+      formData.set("servers", JSON.stringify(servers.filter((s) => s.url.trim() !== "")));
+      formData.set("downloadLinks", JSON.stringify(downloads.filter((d) => d.url.trim() !== "")));
+      await updateEpisode(episode.id, formData);
+      toast.success("Perubahan episode berhasil disimpan!", { id: toastId });
+      router.push("/admin/episodes");
+      router.refresh();
+    } catch (err: any) {
+      toast.error("Gagal menyimpan episode: " + err.message, { id: toastId });
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="space-y-6 max-w-3xl">

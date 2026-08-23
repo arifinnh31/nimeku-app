@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({
@@ -26,7 +27,12 @@ export const metadata: Metadata = {
     "anime online",
     "anime terbaru",
   ],
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-icon.svg",
+  },
 };
+
 
 export default function RootLayout({
   children,
@@ -36,14 +42,18 @@ export default function RootLayout({
   return (
     <html
       lang="id"
+      data-scroll-behavior="smooth"
       className={`${inter.variable} ${outfit.variable} antialiased`}
       suppressHydrationWarning
     >
+
       <body className="min-h-screen flex flex-col">
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
+          <Toaster position="top-center" richColors />
         </ThemeProvider>
       </body>
     </html>
   );
 }
+

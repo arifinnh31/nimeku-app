@@ -2,7 +2,7 @@
 
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+
 
 export async function getEpisodeById(id: string) {
   return await prisma.episode.findUnique({
@@ -83,7 +83,7 @@ export async function createEpisode(formData: FormData) {
 
   revalidatePath('/admin/episodes')
   revalidatePath('/')
-  redirect('/admin/episodes')
+  revalidatePath('/anime', 'layout')
 }
 
 export async function updateEpisode(id: string, formData: FormData) {
@@ -94,39 +94,39 @@ export async function updateEpisode(id: string, formData: FormData) {
   const servers = JSON.parse(formData.get('servers') as string || '[]')
   const downloadLinks = JSON.parse(formData.get('downloadLinks') as string || '[]')
 
-  await prisma.$transaction([
-    // Delete existing relations
-    prisma.streamServer.deleteMany({ where: { episodeId: id } }),
-    prisma.downloadLink.deleteMany({ where: { episodeId: id } }),
-    // Update episode and create new relations
-    prisma.episode.update({
-      where: { id },
-      data: {
-        number,
-        title,
-        releasedAt,
-        servers: {
-          create: servers.map((s: any) => ({
-            name: s.name,
-            type: s.type,
-            url: s.url,
-          }))
-        },
-        downloadLinks: {
-          create: downloadLinks.map((d: any) => ({
-            resolution: d.resolution,
-            provider: d.provider,
-            url: d.url,
-          }))
-        }
+  // Sequential execution to prevent Supabase connection pool transaction timeout
+  await prisma.streamServer.deleteMany({ where: { episodeId: id } })
+  await prisma.downloadLink.deleteMany({ where: { episodeId: id } })
+
+  // Update episode and create new relations
+  await prisma.episode.update({
+    where: { id },
+    data: {
+      number,
+      title,
+      releasedAt,
+      servers: {
+        create: servers.map((s: any) => ({
+          name: s.name,
+          type: s.type,
+          url: s.url,
+        }))
+      },
+      downloadLinks: {
+        create: downloadLinks.map((d: any) => ({
+          resolution: d.resolution,
+          provider: d.provider,
+          url: d.url,
+        }))
       }
-    })
-  ])
+    }
+  })
 
   revalidatePath('/admin/episodes')
   revalidatePath('/')
-  redirect('/admin/episodes')
+  revalidatePath('/anime', 'layout')
 }
+
 
 export async function deleteEpisode(id: string) {
   await prisma.episode.delete({

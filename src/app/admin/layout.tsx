@@ -1,4 +1,4 @@
-import { AdminSidebar } from "@/components/admin-sidebar";
+import { AdminSidebar, AdminMobileHeader } from "@/components/admin-sidebar";
 
 export default function AdminLayout({
   children,
@@ -6,11 +6,14 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-background">
+      <AdminMobileHeader />
       <AdminSidebar />
-      <main className="flex-1 overflow-auto">
-        <div className="p-6 md:p-8 max-w-7xl">{children}</div>
+      <main className="flex-1 h-full overflow-y-auto">
+        <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full">{children}</div>
       </main>
     </div>
   );
 }
+
+

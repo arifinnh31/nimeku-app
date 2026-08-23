@@ -74,33 +74,71 @@ export default function SchedulePage() {
 
       {/* Day tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-        {SCHEDULE_DAYS.map((day) => (
-          <button
-            key={day}
-            onClick={() => {
-              setIsLoading(true);
-              setActiveDay(day);
-            }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-              activeDay === day
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            {day}
-          </button>
-        ))}
+        {SCHEDULE_DAYS.map((day) => {
+          const isToday =
+            new Date().toLocaleDateString("id-ID", { weekday: "long" }) === day;
+          return (
+            <button
+              key={day}
+              onClick={() => {
+                setIsLoading(true);
+                setActiveDay(day);
+              }}
+              className={`relative px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                activeDay === day
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                  : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
+            >
+              <span>{day}</span>
+              {isToday && (
+                <span
+                  className={`text-[9px] px-1 py-0.2 rounded font-bold uppercase ${
+                    activeDay === day
+                      ? "bg-primary-foreground text-primary"
+                      : "bg-primary/20 text-primary"
+                  }`}
+                >
+                  Hari Ini
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
+
 
       {/* Anime list for selected day */}
       <div className="space-y-3">
         {isLoading ? (
-          <div className="py-20 text-center text-muted-foreground">Loading jadwal...</div>
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-card/60"
+              >
+                <div className="w-16 h-22 md:w-20 md:h-28 rounded-lg bg-muted/60 animate-pulse shrink-0" />
+                <div className="flex-1 space-y-2.5">
+                  <div className="w-3/5 max-w-sm h-5 rounded bg-muted/60 animate-pulse" />
+                  <div className="flex gap-2">
+                    <div className="w-14 h-4 rounded-full bg-muted/60 animate-pulse" />
+                    <div className="w-14 h-4 rounded-full bg-muted/60 animate-pulse" />
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-12 h-3 rounded bg-muted/60 animate-pulse" />
+                    <div className="w-16 h-3 rounded bg-muted/60 animate-pulse" />
+                  </div>
+                </div>
+                <div className="w-24 h-7 rounded-lg bg-muted/60 animate-pulse shrink-0" />
+              </div>
+            ))}
+          </div>
         ) : animeForDay.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <p className="text-lg">Tidak ada anime yang tayang pada hari {activeDay}</p>
           </div>
         ) : (
+
           animeForDay.map((anime) => (
             <Link
               key={anime.id}

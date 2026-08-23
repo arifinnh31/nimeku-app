@@ -18,6 +18,7 @@ model Anime {
   coverImage     String
   bannerImage    String?
   rating         Float    @default(0)
+  views          Int      @default(0)
   type           String // TV, Movie, OVA, ONA, Special
   status         String // Ongoing, Completed
   studio         String
@@ -28,11 +29,13 @@ model Anime {
   currentEpisode Int      @default(0)
   airedDay       String?
   airedTime      String?
-  malId          Int?
+  anilistId      Int?
   createdAt      DateTime @default(now())
+
   updatedAt      DateTime @updatedAt
 
-  episodes Episode[]
+  episodes  Episode[]
+  pageViews PageView[]
 }
 
 model Episode {
@@ -72,3 +75,14 @@ model DownloadLink {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
+
+model PageView {
+  id        String   @id @default(cuid())
+  animeId   String?
+  anime     Anime?   @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  path      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+

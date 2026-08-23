@@ -1,4 +1,5 @@
 import { HeroCarousel } from "@/components/hero-carousel";
+import { ContinueWatching } from "@/components/continue-watching";
 import { SectionHeader } from "@/components/section-header";
 import { AnimeGrid } from "@/components/anime-grid";
 import {
@@ -29,11 +30,15 @@ export default async function HomePage() {
       {/* Hero Carousel */}
       <HeroCarousel items={featuredAnime} />
 
+      {/* Lanjut Menonton (Watch History from localStorage) */}
+      <ContinueWatching />
+
       {/* Update Terbaru */}
       <section>
         <SectionHeader title="Update Terbaru" href="/catalog" />
         <AnimeGrid items={latestUpdated} />
       </section>
+
 
       {/* Trending Anime */}
       <section>

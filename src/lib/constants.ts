@@ -24,15 +24,11 @@ export const ALL_GENRES = [
 ];
 
 export const SEASONS = [
-  "Winter 2026",
-  "Spring 2026",
-  "Fall 2025",
-  "Summer 2025",
-  "Winter 2025",
-  "Fall 2024",
-  "Summer 2024",
-  "Spring 2024",
-];
+  "Winter",
+  "Spring",
+  "Summer",
+  "Fall",
+] as const;
 
 export const SCHEDULE_DAYS = [
   "Senin",
@@ -50,3 +46,14 @@ export const ADMIN_STATS = {
   viewsToday: 0,
   weeklyGrowth: 0,
 };
+
+/**
+ * Format Season & Tahun agar rapi dan tidak redundan (misal: "Winter 2026", bukan "Winter 2026 2026")
+ */
+export function formatSeasonYear(season?: string | null, year?: number | null): string {
+  if (!season && !year) return "-";
+  if (!season) return year ? year.toString() : "-";
+  if (!year) return season;
+  if (season.includes(year.toString())) return season;
+  return `${season} ${year}`;
+}
